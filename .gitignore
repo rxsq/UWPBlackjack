@@ -87,7 +87,6 @@ ehthumbs.db
 AppPackages/
 BundleArtifacts/
 Package.StoreAssociation.xml
-Package.appxmanifest
 *.appx
 *.appxbundle
 *.appxupload
