@@ -1,8 +1,7 @@
-﻿using UWPBlackjack.Game;
-using Windows.UI.Core;
+﻿using Windows.UI.Core;
 using Windows.System;
 
-namespace UWPBlackjack.UI
+namespace UWPBlackjack.Game
 {
     public sealed class InputController
     {
@@ -26,19 +25,17 @@ namespace UWPBlackjack.UI
                     _game.Stand();
                     break;
 
-                case VirtualKey.Add:       
+                case VirtualKey.Up:       
                     _game.AdjustBet(+10);
                     break;
 
-                case VirtualKey.Subtract:  
+                case VirtualKey.Down:  
                     _game.AdjustBet(-10);
                     break;
+                //case VirtualKey.Escape:
+                //    _game.Pause();
+                //    break;
             }
-        }
-
-        public void OnPointerPressed(CoreWindow sender, PointerEventArgs args)
-        {
-            // (Optional) Later: hit-test on drawn buttons if you add them.
         }
     }
 }

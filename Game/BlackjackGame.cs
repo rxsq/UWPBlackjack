@@ -38,11 +38,12 @@ namespace UWPBlackjack.Game
             if (Phase != Phase.Betting) return;
             Bet = Math.Max(10, Math.Min(1000, Bet + delta));
             Bet = Math.Min(Bet, Math.Max(10, Bankroll)); // can't bet more than bankroll
+            System.Diagnostics.Debug.WriteLine($"Bet changed: {Bet}");
         }
 
         public void NewRound()
         {
-            if (Phase != Phase.Betting && Phase != Phase.RoundOver) return;
+            if (Phase != Phase.Betting) return;
 
             if (Bankroll <= 0)
             {
