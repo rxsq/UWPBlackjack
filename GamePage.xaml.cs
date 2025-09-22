@@ -37,7 +37,6 @@ namespace UWPBlackjack
             var cw = Window.Current.CoreWindow;
 
             cw.KeyDown += OnCoreKeyDown;
-            //cw.PointerPressed += OnCorePointerPressed;
 
             _game.StartSession();
 
@@ -47,10 +46,10 @@ namespace UWPBlackjack
         {
             var cw = Window.Current.CoreWindow;
             cw.KeyDown -= OnCoreKeyDown;
-            //cw.PointerPressed -= OnCorePointerPressed;
         }
         private void OnCoreKeyDown(CoreWindow sender, KeyEventArgs args)
         {
+            if (args.VirtualKey == Windows.System.VirtualKey.Escape) _isPaused = !_isPaused;
             _input?.OnKeyDown(sender, args);
             RefreshUI();
         }
@@ -79,15 +78,19 @@ namespace UWPBlackjack
             Grid.SetRow(hudRow, 0);
             layout.Children.Add(hudRow);
 
-            // dealer hand
-            var dealer = BuildDealerArea();
-            Grid.SetRow((FrameworkElement)dealer, 1);
-            layout.Children.Add(dealer);
+            // Only show dealer and player hands if not in Betting phase
+            if (_game.Phase != Phase.Betting)
+            {
+                // dealer hand
+                var dealer = BuildDealerArea();
+                Grid.SetRow((FrameworkElement)dealer, 1);
+                layout.Children.Add(dealer);
 
-            // player hand
-            var payer = BuildPlayerArea();
-            Grid.SetRow((FrameworkElement)payer, 3);
-            layout.Children.Add(payer);
+                // player hand
+                var payer = BuildPlayerArea();
+                Grid.SetRow((FrameworkElement)payer, 3);
+                layout.Children.Add(payer);
+            }
 
             // actions
             var bottomRow = new Grid { Margin = new Thickness(12, 6, 12, 12) };
@@ -106,36 +109,26 @@ namespace UWPBlackjack
 
             if (_isPaused)
             {
-                var overlay = new Grid
-                {
-                    Background = new SolidColorBrush(Color.FromArgb(180, 0, 0, 0)),
-                    HorizontalAlignment = HorizontalAlignment.Stretch,
-                    VerticalAlignment = VerticalAlignment.Stretch
-                };
+                Grid pauseOverlay = BuildPauseOverlay();
+                Root.Children.Add(pauseOverlay);
+            }
 
-                var panel = new StackPanel
-                {
-                    HorizontalAlignment = HorizontalAlignment.Center,
-                    VerticalAlignment = VerticalAlignment.Center,
-                    Spacing = 12,
-                };
+            if (_game.Phase == Phase.Betting && !_isPaused)
+            {
+                var tip = MakeText("Place your bet", 28, Colors.Yellow, bold: true, centered: true);
+                tip.Margin = new Thickness(0, 0, 0, 20);
+                tip.HorizontalAlignment = HorizontalAlignment.Center;
+                tip.VerticalAlignment = VerticalAlignment.Center;
+                Root.Children.Add(tip);
+            }
 
-                panel.Children.Add(MakeText("Paused", 32, Colors.White, bold: true));
-                panel.Children.Add(MakeAction("Resume", () =>
-                {
-                    _isPaused = false;
-                    RefreshUI();
-                }, enabled: true, width: 120));
-                panel.Children.Add(MakeAction("Quit", () =>
-                {
-                    Application.Current.Exit();
-                }, enabled: true, width: 120));
-
-                overlay.Children.Add(panel);
-                Root.Children.Add(overlay);
+            if (_game.Phase == Phase.RoundOver && _game.Bankroll <= 0)
+            {
+                Grid gameOverOverlay = BuildGameOverOverlay();
+                Root.Children.Add(gameOverOverlay);
             }
         }
-        private UIElement BuildHudPanel()
+        private StackPanel BuildHudPanel()
         {
             var panel = new StackPanel
             {
@@ -157,8 +150,7 @@ namespace UWPBlackjack
 
             return panel;
         }
-
-        private UIElement BuildPauseButton()
+        private Button BuildPauseButton()
         {
             var btn = new Button
             {
@@ -174,8 +166,7 @@ namespace UWPBlackjack
             btn.Click += PauseButton_Click;
             return btn;
         }
-
-        private UIElement BuildDealerArea()
+        private StackPanel BuildDealerArea()
         {
             var stack = new StackPanel
             {
@@ -192,8 +183,7 @@ namespace UWPBlackjack
 
             return stack;
         }
-
-        private UIElement BuildPlayerArea()
+        private StackPanel BuildPlayerArea()
         {
             var stack = new StackPanel
             {
@@ -217,8 +207,7 @@ namespace UWPBlackjack
 
             return stack;
         }
-
-        private UIElement BuildActionBar()
+        private StackPanel BuildActionBar()
         {
             var wrap = new StackPanel
             {
@@ -240,8 +229,7 @@ namespace UWPBlackjack
 
             return wrap;
         }
-
-        private UIElement BuildBetPanel()
+        private StackPanel BuildBetPanel()
         {
             var panel = new StackPanel
             {
@@ -265,6 +253,16 @@ namespace UWPBlackjack
                 _game.AdjustBet(+5);
             }, small: true));
 
+            row.Children.Add(MakeAction("Lose Game (testing)", () =>
+            {
+                _game.AdjustBet(_game.Bankroll); // bet all in
+                _game.NewRound();
+                while (_game.Phase != Phase.RoundOver)
+                {
+                    _game.Stand(); // force stand to end round
+                }
+            }, small: true, enabled: _game.Bankroll > 0));
+
             panel.Children.Add(row);
 
             var tip = MakeText("Tip: use +/- keys", 12, Colors.LightGray);
@@ -273,18 +271,74 @@ namespace UWPBlackjack
 
             return panel;
         }
+        private Grid BuildPauseOverlay()
+        {
+            var overlay = new Grid
+            {
+                Background = new SolidColorBrush(Color.FromArgb(180, 0, 0, 0)),
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                VerticalAlignment = VerticalAlignment.Stretch
+            };
 
-        private TextBlock MakeText(string t, double size, Color color, bool bold = false)
+            var panel = new StackPanel
+            {
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                Spacing = 12,
+            };
+
+            panel.Children.Add(MakeText("Paused", 32, Colors.White, bold: true, centered: true));
+            panel.Children.Add(MakeAction("Resume", () =>
+            {
+                _isPaused = false;
+            }, enabled: true, width: 120));
+            panel.Children.Add(MakeAction("Quit", () =>
+            {
+                Application.Current.Exit();
+            }, enabled: true, width: 120));
+
+            overlay.Children.Add(panel);
+            return overlay;
+        }
+        private Grid BuildGameOverOverlay()
+        {
+            var overlay = new Grid
+            {
+                Background = new SolidColorBrush(Color.FromArgb(220, 0, 0, 0)),
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                VerticalAlignment = VerticalAlignment.Stretch
+            };
+            var panel = new StackPanel
+            {
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                Spacing = 12,
+            };
+            panel.Children.Add(MakeText("Game Over", 32, Colors.Red, bold: true, centered: true));
+            panel.Children.Add(MakeText("You have run out of funds.", 18, Colors.White, centered: true));
+            panel.Children.Add(MakeAction("Restart", () =>
+            {
+                _game.StartSession();
+                _isPaused = false;
+            }, enabled: true, stretchWidth: true));
+            panel.Children.Add(MakeAction("Quit", () =>
+            {
+                Application.Current.Exit();
+            }, enabled: true, stretchWidth: true));
+            overlay.Children.Add(panel);
+            return overlay;
+        }
+        private TextBlock MakeText(string t, double size, Color color, bool bold = false, bool centered = false)
         {
             return new TextBlock
             {
                 Text = t,
                 Foreground = new SolidColorBrush(color),
                 FontSize = size,
-                FontWeight = bold ? Windows.UI.Text.FontWeights.SemiBold : Windows.UI.Text.FontWeights.Normal
+                FontWeight = bold ? Windows.UI.Text.FontWeights.SemiBold : Windows.UI.Text.FontWeights.Normal,
+                TextAlignment = centered ? TextAlignment.Center : TextAlignment.Left,
             };
         }
-
         private Grid MakeRow(string label, string value)
         {
             var g = new Grid();
@@ -301,8 +355,7 @@ namespace UWPBlackjack
 
             return g;
         }
-
-        private Button MakeAction(string caption, Action onClick, bool small = false, bool enabled = true, double? width = null)
+        private Button MakeAction(string caption, Action onClick, bool small = false, bool enabled = true, double? width = null, bool stretchWidth = false)
         {
             var b = new Button
             {
@@ -317,10 +370,13 @@ namespace UWPBlackjack
                 CornerRadius = new CornerRadius(6)
             };
             if (width.HasValue) b.Width = width.Value;
+            if (stretchWidth)
+            {
+                b.HorizontalAlignment = HorizontalAlignment.Stretch;
+            }
             b.Click += (_, __) => { onClick(); RefreshUI(); };
             return b;
         }
-
         private StackPanel BuildHandFromGame(Hand hand, bool hideHole)
         {
             List<string> backPaths = new() { "backs/back_default.png", "backs/back_red.png" };
@@ -347,7 +403,6 @@ namespace UWPBlackjack
             }
             return panel;
         }
-
         private FrameworkElement MakeCardImage(string relativePath, double w, double h)
         {
             var uri = new Uri($"ms-appx:///Assets/Cards/{relativePath}");
@@ -362,9 +417,7 @@ namespace UWPBlackjack
                 System.Diagnostics.Debug.WriteLine($"ImageFailed: {uri} -> {e.ErrorMessage}");
             return img;
         }
-
         private static string FaceCode(Card c) => RankCode(c.Rank) + SuitCode(c.Suit);
-
         private static string RankCode(int r) => r switch
         {
             1 => "A",
@@ -374,7 +427,6 @@ namespace UWPBlackjack
             13 => "K",
             _ => r.ToString()
         };
-
         private static string SuitCode(Suit s) => s switch
         {
             Suit.Clubs => "C",
@@ -382,7 +434,6 @@ namespace UWPBlackjack
             Suit.Hearts => "H",
             _ => "S"
         };
-
         private void PauseButton_Click(object sender, RoutedEventArgs e)
         {
             _isPaused = !_isPaused;

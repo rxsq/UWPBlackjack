@@ -30,15 +30,14 @@ namespace UWPBlackjack.Game
             LastPayout = 0;
         }
 
-        /// <summary> Hook for animations/timers later. </summary>
         public void Update(TimeSpan _elapsed) { /* no-op for now */ }
 
-        public void AdjustBet(int delta)
+        public void AdjustBet(int amount)
         {
             if (Phase != Phase.Betting) return;
-            Bet = Math.Max(10, Math.Min(1000, Bet + delta));
+            Bet = Math.Max(10, Math.Min(1000, Bet + amount));
             Bet = Math.Min(Bet, Math.Max(10, Bankroll)); // can't bet more than bankroll
-            System.Diagnostics.Debug.WriteLine($"Bet changed: {Bet}");
+            //System.Diagnostics.Debug.WriteLine($"Bet changed: {Bet}");
         }
 
         public void NewRound()

@@ -26,11 +26,11 @@ namespace UWPBlackjack.Game
                     break;
 
                 case VirtualKey.Up:       
-                    _game.AdjustBet(+10);
+                    _game.AdjustBet(+5);
                     break;
 
                 case VirtualKey.Down:  
-                    _game.AdjustBet(-10);
+                    _game.AdjustBet(-5);
                     break;
                 //case VirtualKey.Escape:
                 //    _game.Pause();
