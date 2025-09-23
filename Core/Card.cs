@@ -38,6 +38,25 @@ namespace UWPBlackjack.Core
                 _ => rank.ToString()
             };
         }
+        public string DisplayValue
+        {
+            get
+            {
+                if (IsAce)
+                {
+                    return "1/11";
+                }
+                else if (IsFaceCard)
+                {
+                    return "10";
+                }
+                else
+                {
+                    return Rank.ToString();
+                }
+            }
+        }
+
 
         public static char SuitChar(Suit suit)
         {

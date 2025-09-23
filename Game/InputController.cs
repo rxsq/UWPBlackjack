@@ -32,9 +32,9 @@ namespace UWPBlackjack.Game
                 case VirtualKey.Down:  
                     _game.AdjustBet(-5);
                     break;
-                //case VirtualKey.Escape:
-                //    _game.Pause();
-                //    break;
+                    //case VirtualKey.Escape:
+                    //    _game.Pause();
+                    //    break;
             }
         }
     }

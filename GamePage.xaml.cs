@@ -22,6 +22,7 @@ namespace UWPBlackjack
         private const double CARD_HEIGHT = 150;
 
         private bool _isPaused = false;
+        private bool _isDealingAnimationInProgress = false;
 
         public GamePage()
         {
@@ -78,6 +79,11 @@ namespace UWPBlackjack
             Grid.SetRow(hudRow, 0);
             layout.Children.Add(hudRow);
 
+            if (_game.Phase == Phase.Dealing && !_isDealingAnimationInProgress)
+            {
+                _ = AnimateInitialDealAsync();
+            }
+
             // Only show dealer and player hands if not in Betting phase
             if (_game.Phase != Phase.Betting)
             {
@@ -128,6 +134,50 @@ namespace UWPBlackjack
                 Root.Children.Add(gameOverOverlay);
             }
         }
+        private async Task AnimateInitialDealAsync()
+        {
+            if (_isDealingAnimationInProgress) return;
+            _isDealingAnimationInProgress = true;
+
+            _game.Player.Clear();
+            _game.Dealer.Clear();
+
+            for (int i = 0; i < 2; i++)
+            {
+                _game.Player.Add(_game.Deck.Draw());
+                RefreshUI();
+                await Task.Delay(400);
+
+                _game.Dealer.Add(_game.Deck.Draw());
+                RefreshUI();
+                await Task.Delay(400);
+            }
+
+            _game.Phase = Phase.PlayerTurn;
+
+            if (_game.Player.IsBlackjack || _game.Dealer.IsBlackjack)
+            {
+                _game.Phase = Phase.RoundOver;
+                int pv = _game.Player.Value;
+                int dv = _game.Dealer.Value;
+                if (_game.Player.IsBlackjack && !_game.Dealer.IsBlackjack)
+                {
+                    _game.LastPayout = (int)Math.Round(_game.Bet * 1.5);
+                    _game.Bankroll += _game.LastPayout;
+                    _game.LastOutcome = "Blackjack! You win 3:2";
+                }
+                else if (_game.Dealer.IsBlackjack && !_game.Player.IsBlackjack)
+                {
+                    _game.LastPayout = -_game.Bet;
+                    _game.Bankroll += _game.LastPayout;
+                    _game.LastOutcome = "Dealer blackjack — you lose";
+                }
+            }
+
+            _isDealingAnimationInProgress = false;
+            RefreshUI();
+        }
+
         private StackPanel BuildHudPanel()
         {
             var panel = new StackPanel
@@ -173,16 +223,34 @@ namespace UWPBlackjack
                 Orientation = Orientation.Vertical,
                 HorizontalAlignment = HorizontalAlignment.Center
             };
-            var val = _game.Dealer?.Value ?? 0;
-            var lbl = MakeText($"Dealer ({val})", 18, Colors.White, bold: true);
+
+            bool hideHole = _game.Phase == Phase.PlayerTurn || _game.Phase == Phase.Dealing;
+
+            TextBlock lbl;
+            if (hideHole)
+            {
+                if (_game.Dealer.Cards.Count > 0)
+                {
+                    string up = _game.Dealer.Cards[0].DisplayValue;
+                    lbl = MakeText($"Dealer ({up})", 18, Colors.White, bold: true);
+                }
+                else
+                {
+                    lbl = MakeText($"Dealer", 18, Colors.White, bold: true);
+                }
+            }
+            else
+            {
+                var val = _game.Dealer?.Value ?? 0;
+                lbl = MakeText($"Dealer ({val})", 18, Colors.White, bold: true);
+            }
             lbl.Margin = new Thickness(0, 6, 0, 6);
             stack.Children.Add(lbl);
 
-            bool hideHole = _game.Phase == Phase.PlayerTurn;
             stack.Children.Add(BuildHandFromGame(_game.Dealer, hideHole));
-
             return stack;
         }
+
         private StackPanel BuildPlayerArea()
         {
             var stack = new StackPanel
@@ -397,7 +465,7 @@ namespace UWPBlackjack
                 }
                 else
                 {
-                    var code = FaceCode(hand.Cards[i]); // e.g. "AS"
+                    var code = FaceCode(hand.Cards[i]); 
                     panel.Children.Add(MakeCardImage($"faces/{code}.png", CARD_WIDTH, CARD_HEIGHT));
                 }
             }

@@ -9,17 +9,17 @@ namespace UWPBlackjack.Game
     /// </summary>
     public class BlackjackGame
     {
-        public Phase Phase { get; private set; } = Phase.Betting;
-        public int Bankroll { get; private set; } = 1000;
-        public int Bet { get; private set; } = 50;
+        public Phase Phase { get; set; } = Phase.Betting;
+        public int Bankroll { get; set; } = 1000;
+        public int Bet { get; set; } = 50;
 
         public Hand Player { get; } = new Hand();
         public Hand Dealer { get; } = new Hand();
 
-        public string LastOutcome { get; private set; } = "";
-        public int LastPayout { get; private set; } = 0;
+        public string LastOutcome { get; set; } = "";
+        public int LastPayout { get; set; } = 0;
 
-        private readonly Deck _deck = new();
+        public readonly Deck Deck = new();
 
         public void StartSession()
         {
@@ -46,7 +46,6 @@ namespace UWPBlackjack.Game
 
             if (Bankroll <= 0)
             {
-                // broke; lock to RoundOver with message
                 Phase = Phase.RoundOver;
                 LastOutcome = "Bankroll empty";
                 LastPayout = 0;
@@ -60,34 +59,16 @@ namespace UWPBlackjack.Game
             LastOutcome = "";
             LastPayout = 0;
 
-            // Simple: shuffle at start of each round (fine for MVP)
-            _deck.Shuffle();
+            Deck.Shuffle();
 
-            // Initial deal: P, D, P, D
-            Player.Add(_deck.Draw());
-            Dealer.Add(_deck.Draw());
-            Player.Add(_deck.Draw());
-            Dealer.Add(_deck.Draw());
-
-            Phase = Phase.PlayerTurn;
-
-            // Immediate blackjack resolution
-            if (Player.IsBlackjack || Dealer.IsBlackjack)
-            {
-                Phase = Phase.RoundOver;
-                Settle();
-            }
-            else
-            {
-                Phase = Phase.PlayerTurn;
-            }
+            Phase = Phase.Dealing;
         }
 
         public void Hit()
         {
             if (Phase != Phase.PlayerTurn) return;
 
-            Player.Add(_deck.Draw());
+            Player.Add(Deck.Draw());
 
             if (Player.IsBust)
             {
@@ -104,7 +85,7 @@ namespace UWPBlackjack.Game
 
             // Dealer hits soft 17? Standard house rules vary; we'll stand on all 17s for MVP.
             while (Dealer.Value < 17)
-                Dealer.Add(_deck.Draw());
+                Dealer.Add(Deck.Draw());
 
             Phase = Phase.RoundOver;
             Settle();
@@ -115,8 +96,6 @@ namespace UWPBlackjack.Game
             if (Phase == Phase.RoundOver)
                 Phase = Phase.Betting;
         }
-
-        // --- Settlement --------------------------------------------------------
 
         private void Settle()
         {
