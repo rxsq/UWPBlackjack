@@ -50,7 +50,8 @@ namespace UWPBlackjack
         }
         private void OnCoreKeyDown(CoreWindow sender, KeyEventArgs args)
         {
-            if (args.VirtualKey == Windows.System.VirtualKey.Escape) _isPaused = !_isPaused;
+            if (args.VirtualKey == Windows.System.VirtualKey.Escape) 
+                _isPaused = !_isPaused;
             _input?.OnKeyDown(sender, args);
             RefreshUI();
         }
@@ -60,20 +61,20 @@ namespace UWPBlackjack
 
             Root.Background = new SolidColorBrush(Color.FromArgb(255, 12, 90, 40));
 
-            var layout = new Grid();
+            Grid layout = new();
             layout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // hud
             layout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // dealer
             layout.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }); // spacer
             layout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // player
             layout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // actions
 
-            var hudRow = new Grid { Margin = new Thickness(12, 12, 12, 6) };
+            Grid hudRow = new() { Margin = new Thickness(12, 12, 12, 6) };
             hudRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             hudRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
             hudRow.Children.Add(BuildHudPanel());
-            var pause = BuildPauseButton();
-            Grid.SetColumn((FrameworkElement)pause, 1);
+            Button pause = BuildPauseButton();
+            Grid.SetColumn(pause, 1);
             hudRow.Children.Add(pause);
 
             Grid.SetRow(hudRow, 0);
@@ -88,24 +89,25 @@ namespace UWPBlackjack
             if (_game.Phase != Phase.Betting)
             {
                 // dealer hand
-                var dealer = BuildDealerArea();
+                StackPanel dealer = BuildDealerArea();
                 Grid.SetRow((FrameworkElement)dealer, 1);
                 layout.Children.Add(dealer);
 
                 // player hand
-                var payer = BuildPlayerArea();
+                StackPanel payer = BuildPlayerArea();
                 Grid.SetRow((FrameworkElement)payer, 3);
                 layout.Children.Add(payer);
             }
 
             // actions
-            var bottomRow = new Grid { Margin = new Thickness(12, 6, 12, 12) };
+            Grid bottomRow = new() { Margin = new Thickness(12, 6, 12, 12) };
             bottomRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             bottomRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
             bottomRow.Children.Add(BuildActionBar());
-            var betPanel = BuildBetPanel();
-            Grid.SetColumn((FrameworkElement)betPanel, 1);
+
+            // bet panel
+            StackPanel betPanel = BuildBetPanel();
+            Grid.SetColumn(betPanel, 1);
             bottomRow.Children.Add(betPanel);
 
             Grid.SetRow(bottomRow, 4);
@@ -121,7 +123,7 @@ namespace UWPBlackjack
 
             if (_game.Phase == Phase.Betting && !_isPaused)
             {
-                var tip = MakeText("Place your bet", 28, Colors.Yellow, bold: true, centered: true);
+                TextBlock tip = MakeText("Place your bet", 28, Colors.Yellow, bold: true, centered: true);
                 tip.Margin = new Thickness(0, 0, 0, 20);
                 tip.HorizontalAlignment = HorizontalAlignment.Center;
                 tip.VerticalAlignment = VerticalAlignment.Center;
