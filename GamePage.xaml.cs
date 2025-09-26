@@ -24,6 +24,9 @@ namespace UWPBlackjack
         private bool _isPaused = false;
         private bool _isDealingAnimationInProgress = false;
 
+        private string[] cardBacks = { "red", "blue" };
+        private string currentBack = "red";
+
         public GamePage()
         {
             InitializeComponent();
@@ -357,15 +360,29 @@ namespace UWPBlackjack
                 Spacing = 12,
             };
 
+            string switchTo = currentBack;
+
+            switch (currentBack)
+            {
+                case "red": switchTo = "blue";
+                    break;
+                case "blue": switchTo = "red";
+                    break;
+            }
+
             panel.Children.Add(MakeText("Paused", 32, Colors.White, bold: true, centered: true));
+            panel.Children.Add(MakeAction($"Change back to: {switchTo}", () =>
+            {
+                currentBack = switchTo;
+            }, enabled: true, width: 180));
             panel.Children.Add(MakeAction("Resume", () =>
             {
                 _isPaused = false;
-            }, enabled: true, width: 120));
+            }, enabled: true, width: 180));
             panel.Children.Add(MakeAction("Quit", () =>
             {
                 Application.Current.Exit();
-            }, enabled: true, width: 120));
+            }, enabled: true, width: 180));
 
             overlay.Children.Add(panel);
             return overlay;
@@ -451,6 +468,17 @@ namespace UWPBlackjack
         {
             List<string> backPaths = new() { "backs/back_default.png", "backs/back_red.png" };
 
+            int backIndex = 1;
+
+            if (currentBack != null && (currentBack.Equals("red") || currentBack.Equals("blue")))
+            {
+                switch (currentBack)
+                {
+                    case "red": backIndex = 1; break;
+                    case "blue": backIndex = 0; break;
+                }
+            } 
+
             var panel = new StackPanel
             {
                 Orientation = Orientation.Horizontal,
@@ -463,7 +491,7 @@ namespace UWPBlackjack
                 var isHole = hideHole && i == 1;
                 if (isHole)
                 {
-                    panel.Children.Add(MakeCardImage(backPaths[1], CARD_WIDTH, CARD_HEIGHT));
+                    panel.Children.Add(MakeCardImage(backPaths[backIndex], CARD_WIDTH, CARD_HEIGHT));
                 }
                 else
                 {
