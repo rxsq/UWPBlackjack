@@ -10,7 +10,7 @@ namespace UWPBlackjack.Game
     public class BlackjackGame
     {
         public Phase Phase { get; set; } = Phase.Betting;
-        public int Bankroll { get; set; } = 1000;
+        public int Bankroll { get; set; } = 500;
         public int Bet { get; set; } = 50;
 
         public Hand Player { get; } = new Hand();
@@ -23,21 +23,18 @@ namespace UWPBlackjack.Game
 
         public void StartSession()
         {
-            Bankroll = 1000;
-            Bet = 50;
+            Bankroll = 500;
+            Bet = 25;
             Phase = Phase.Betting;
             LastOutcome = "";
             LastPayout = 0;
         }
-
-        public void Update(TimeSpan _elapsed) { /* no-op for now */ }
 
         public void AdjustBet(int amount)
         {
             if (Phase != Phase.Betting) return;
             Bet = Math.Max(10, Math.Min(1000, Bet + amount));
             Bet = Math.Min(Bet, Math.Max(10, Bankroll)); // can't bet more than bankroll
-            //System.Diagnostics.Debug.WriteLine($"Bet changed: {Bet}");
         }
 
         public void NewRound()
@@ -83,7 +80,6 @@ namespace UWPBlackjack.Game
 
             Phase = Phase.DealerTurn;
 
-            // Dealer hits soft 17? Standard house rules vary; we'll stand on all 17s for MVP.
             while (Dealer.Value < 17)
                 Dealer.Add(Deck.Draw());
 

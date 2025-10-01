@@ -7,7 +7,6 @@ namespace UWPBlackjack.Game
     {
         private readonly BlackjackGame _game;
         public InputController(BlackjackGame game) => _game = game;
-
         public void OnKeyDown(CoreWindow sender, KeyEventArgs args)
         {
             switch (args.VirtualKey)
@@ -32,9 +31,6 @@ namespace UWPBlackjack.Game
                 case VirtualKey.Down:  
                     _game.AdjustBet(-5);
                     break;
-                    //case VirtualKey.Escape:
-                    //    _game.Pause();
-                    //    break;
             }
         }
     }

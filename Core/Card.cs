@@ -27,8 +27,8 @@ namespace UWPBlackjack.Core
         {
             return $"{RankString(Rank)}{SuitChar(Suit)}";
         }
-
-        public static string RankString(int rank)         {
+        public static string RankString(int rank)         
+        {
             return rank switch
             {
                 1 => "A",
@@ -56,8 +56,6 @@ namespace UWPBlackjack.Core
                 }
             }
         }
-
-
         public static char SuitChar(Suit suit)
         {
             return suit switch

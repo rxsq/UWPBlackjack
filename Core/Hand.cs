@@ -13,7 +13,6 @@ namespace UWPBlackjack.Core
         public void Add(Card c) => _cards.Add(c);
         public int Count => _cards.Count;
 
-
         /// <summary>
         /// Standard blackjack total:
         /// - J/Q/K are 10
