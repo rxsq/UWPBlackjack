@@ -243,6 +243,18 @@ namespace UWPBlackjack
             _isDealingAnimationInProgress = false;
             RefreshUI();
         }
+
+        private async void ShowUnlockDialog(BackOption opt)
+        {
+            var dialog = new ContentDialog
+            {
+                Title = "Unlocked!",
+                Content = $"You unlocked: {opt.DisplayName}",
+                CloseButtonText = "OK"
+            };
+
+            await dialog.ShowAsync();
+        }        
         #endregion
 
         #region Card Asset Helpers
@@ -266,9 +278,9 @@ namespace UWPBlackjack
         private void InitializeCardBacks()
         {
             _backOptions.Add(new BackOption { Key = "default", DisplayName = "Classic", AssetFile = "backs/back_default.png", Cost = 0 });
-            _backOptions.Add(new BackOption { Key = "red", DisplayName = "Ruby Red", AssetFile = "backs/back_red.png", Cost = 1_000 });
-            _backOptions.Add(new BackOption { Key = "orange", DisplayName = "Sunset Orange", AssetFile = "backs/back_orange.png", Cost = 1_500 });
-            _backOptions.Add(new BackOption { Key = "purple", DisplayName = "Royal Purple", AssetFile = "backs/back_purple.png", Cost = 2_000 });
+            _backOptions.Add(new BackOption { Key = "red", DisplayName = "Ruby Red", AssetFile = "backs/back_red.png", Cost = 250 });
+            _backOptions.Add(new BackOption { Key = "orange", DisplayName = "Sunset Orange", AssetFile = "backs/back_orange.png", Cost = 1_000 });
+            _backOptions.Add(new BackOption { Key = "purple", DisplayName = "Royal Purple", AssetFile = "backs/back_purple.png", Cost = 1_500 });
         }
         #endregion
 
@@ -574,6 +586,7 @@ namespace UWPBlackjack
                     _game.Bankroll -= opt.Cost;
                     _ownedBacks.Add(opt.Key);
                     currentBack = opt.Key;
+                    ShowUnlockDialog(opt);
                 }, enabled: canBuy, width: 120);
             }
             else
