@@ -7,9 +7,12 @@ using Windows.UI;
 using Windows.UI.Core;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
-using Windows.UI.Xaml.Documents;
 using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Media.Imaging;
+using Windows.Media.Playback;
+using Windows.Media.Core;
+using System.Diagnostics;
+using System.ComponentModel.DataAnnotations;
 
 //Project: Lab 1A - UWP Game
 //Student Name: Andrew Dionne
@@ -31,10 +34,12 @@ namespace UWPBlackjack
 
         public List<BackOption> _backOptions = [];
 
-
         private bool _shopOpen = false;
         private List<string> _ownedBacks = new List<string> { "default" };
         private string currentBack = "default";
+
+        private MediaPlayer _bgmPlayer;
+        private static readonly Random _rng = new Random();
 
         public GamePage()
         {
@@ -49,9 +54,9 @@ namespace UWPBlackjack
             _input = new InputController(_game);
 
             InitializeCardBacks();
+            PlayBackgroundMusic();
 
             var cw = Window.Current.CoreWindow;
-
             cw.KeyDown += OnCoreKeyDown;
 
             _game.StartSession();
@@ -62,6 +67,8 @@ namespace UWPBlackjack
         {
             var cw = Window.Current.CoreWindow;
             cw.KeyDown -= OnCoreKeyDown;
+            _bgmPlayer?.Dispose();
+            _bgmPlayer = null;
         }
         private void OnCoreKeyDown(CoreWindow sender, KeyEventArgs args)
         {
@@ -205,11 +212,14 @@ namespace UWPBlackjack
             {
                 _game.Player.Add(_game.Deck.Draw());
                 RefreshUI();
-                await Task.Delay(300);
+                PlaySoundEffect("Assets/Sfx/card_flip_1.mp3");
+                await Task.Delay(500);
 
                 _game.Dealer.Add(_game.Deck.Draw());
+                PlaySoundEffect("Assets/Sfx/card_flip_2.mp3");
                 RefreshUI();
-                await Task.Delay(300);
+
+                await Task.Delay(500);
             }
 
             // player gets first turn after draw
@@ -722,6 +732,47 @@ namespace UWPBlackjack
                 System.Diagnostics.Debug.WriteLine($"ImageFailed: {uri} -> {e.ErrorMessage}");
             return img;
         }
+        #endregion
+
+        #region Audio & Audio Helpers
+        private void PlayBackgroundMusic()
+        {
+            try
+            {
+                if (_bgmPlayer == null)
+                {
+                    _bgmPlayer = new MediaPlayer
+                    {
+                        IsLoopingEnabled = true,
+                        Volume = 0.15
+                    };
+                }
+
+                var uri = new Uri("ms-appx:///Assets/Music/default.mp3");
+                _bgmPlayer.Source = MediaSource.CreateFromUri(uri);
+                _bgmPlayer.Play();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine("BGM error: " + ex.Message);
+            }
+        }
+        private void PlaySoundEffect(string packageRelativePath)
+        {
+            try
+            {
+                var uri = new Uri($"ms-appx:///{packageRelativePath}"); 
+                var player = new MediaPlayer { AutoPlay = true, Volume = 0.3 };
+                player.Source = MediaSource.CreateFromUri(uri);
+                player.MediaEnded += (s, e) => player.Dispose();
+                player.Play();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine("SFX error: " + ex.Message);
+            }
+        }
+
         #endregion
     }
 }
