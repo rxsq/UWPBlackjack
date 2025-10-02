@@ -31,6 +31,7 @@ namespace UWPBlackjack
 
         private bool _isPaused = false;
         private bool _isDealingAnimationInProgress = false;
+        private bool _isDealerAnimationInProgress = false;
 
         public List<BackOption> _backOptions = [];
 
@@ -129,6 +130,11 @@ namespace UWPBlackjack
                 _ = AnimateInitialDealAsync();
             }
 
+            if (_game.Phase == Phase.DealerTurn && !_isDealerAnimationInProgress)
+            {
+                _ = AnimateDealerTurnAsync();
+            }
+
             // only show dealer and player hands if not in Betting phase
             if (_game.Phase != Phase.Betting)
             {
@@ -203,9 +209,6 @@ namespace UWPBlackjack
 
             _isDealingAnimationInProgress = true;
 
-            _game.Player.Clear();
-            _game.Dealer.Clear();
-
             // draws 2 cards for player and 2 cards for dealer with slight delay between each draw for visual sake
             // refreshing the ui between each draw of card before Task.Delay so we can see cards as they are drawn
             for (int i = 0; i < 2; i++)
@@ -253,7 +256,32 @@ namespace UWPBlackjack
             _isDealingAnimationInProgress = false;
             RefreshUI();
         }
+        private async Task AnimateDealerTurnAsync()
+        {
+            if (_isDealerAnimationInProgress) return;
+            _isDealerAnimationInProgress = true;
 
+            RefreshUI();
+            await Task.Delay(600);
+
+            while (_game.DealerShouldHit)
+            {
+                _game.DealerHitOne();
+                PlaySoundEffect("Assets/Sfx/card_flip_2.mp3");
+
+                RefreshUI();
+                await Task.Delay(500);
+
+                while (_isPaused)
+                    await Task.Delay(100);
+            }
+
+            await Task.Delay(400);
+            _game.FinishDealer();
+
+            _isDealerAnimationInProgress = false;
+            RefreshUI();
+        }
         private async void ShowUnlockDialog(BackOption opt)
         {
             var dialog = new ContentDialog
@@ -424,8 +452,8 @@ namespace UWPBlackjack
                 wrap.Children.Add(MakeAction("Deal", () => { }, enabled: false));
 
             bool canAct = _game.Phase == Phase.PlayerTurn;
-            wrap.Children.Add(MakeAction("Hit", () => { if (canAct) _game.Hit(); }, enabled: canAct));
-            wrap.Children.Add(MakeAction("Stand", () => { if (canAct) _game.Stand(); }, enabled: canAct));
+            wrap.Children.Add(MakeAction("Hit", () => { if (canAct) { _game.Hit(); PlaySoundEffect("Assets/Sfx/card_flip_1.mp3"); } }, enabled: canAct));
+            wrap.Children.Add(MakeAction("Stand", () => { if (canAct) _game.Stand(); PlaySoundEffect("Assets/Sfx/card_flip_2.mp3"); }, enabled: canAct));
 
             return wrap;
         }
@@ -744,7 +772,7 @@ namespace UWPBlackjack
                     _bgmPlayer = new MediaPlayer
                     {
                         IsLoopingEnabled = true,
-                        Volume = 0.15
+                        Volume = 0.05
                     };
                 }
 
@@ -762,7 +790,7 @@ namespace UWPBlackjack
             try
             {
                 var uri = new Uri($"ms-appx:///{packageRelativePath}"); 
-                var player = new MediaPlayer { AutoPlay = true, Volume = 0.3 };
+                var player = new MediaPlayer { AutoPlay = true, Volume = 0.1 };
                 player.Source = MediaSource.CreateFromUri(uri);
                 player.MediaEnded += (s, e) => player.Dispose();
                 player.Play();

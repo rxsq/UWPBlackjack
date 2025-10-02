@@ -20,6 +20,7 @@ namespace UWPBlackjack.Game
         public int LastPayout { get; set; } = 0;
 
         public readonly Deck Deck = new();
+        public bool DealerShouldHit => Dealer.Value < 17;
 
         public void StartSession()
         {
@@ -74,17 +75,21 @@ namespace UWPBlackjack.Game
             }
         }
 
+        public void DealerHitOne()
+        {
+            Dealer.Add(Deck.Draw());
+        }
+
+        public void FinishDealer()
+        {
+            Phase = Phase.RoundOver;
+            Settle();
+        }
+
         public void Stand()
         {
             if (Phase != Phase.PlayerTurn) return;
-
             Phase = Phase.DealerTurn;
-
-            while (Dealer.Value < 17)
-                Dealer.Add(Deck.Draw());
-
-            Phase = Phase.RoundOver;
-            Settle();
         }
 
         public void NextHand()
