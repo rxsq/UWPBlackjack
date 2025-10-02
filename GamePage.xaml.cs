@@ -42,6 +42,8 @@ namespace UWPBlackjack
         private MediaPlayer _bgmPlayer;
         private static readonly Random _rng = new Random();
 
+        bool _backgroundMusicPlaying = true;
+
         public GamePage()
         {
             InitializeComponent();
@@ -112,14 +114,20 @@ namespace UWPBlackjack
             hudRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             hudRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             hudRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            hudRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
             hudRow.Children.Add(BuildHudPanel());
             Button shop = BuildShopButton();
             Button pause = BuildPauseButton();
+            Button music = BuildMusicButton();
+
             Grid.SetColumn(shop, 1);
             Grid.SetColumn(pause, 2);
+            Grid.SetColumn(music, 3);
+
             hudRow.Children.Add(pause);
             hudRow.Children.Add(shop);
+            hudRow.Children.Add(music);
 
             Grid.SetRow(hudRow, 0);
             layout.Children.Add(hudRow);
@@ -384,6 +392,37 @@ namespace UWPBlackjack
             shopBtn.Click += ShopButton_Click;
             return shopBtn;
         }
+        private Button BuildMusicButton()
+        {
+            var btn = new Button
+            {
+                Content = _backgroundMusicPlaying ? "Music: On" : "Music: Off",
+                Padding = new Thickness(12, 6, 12, 6),
+                Background = new SolidColorBrush(Color.FromArgb(180, 45, 45, 45)),
+                Foreground = new SolidColorBrush(Colors.White),
+                BorderBrush = new SolidColorBrush(Color.FromArgb(200, 255, 255, 255)),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(6),
+                Margin = new Thickness(8, 0, 0, 0)
+            };
+
+            btn.Click += (s, e) =>
+            {
+                _backgroundMusicPlaying = !_backgroundMusicPlaying;
+                if (_backgroundMusicPlaying)
+                {
+                    _bgmPlayer?.Play();
+                }
+                else
+                {
+                    _bgmPlayer?.Pause();
+                }
+                RefreshUI();
+            };
+
+            return btn;
+        }
+
         private StackPanel BuildDealerArea()
         {
             var stack = new StackPanel
