@@ -140,12 +140,12 @@ namespace UWPBlackjack
             {
                 // dealer hand
                 StackPanel dealer = BuildDealerArea();
-                Grid.SetRow((FrameworkElement)dealer, 1);
+                Grid.SetRow(dealer, 1);
                 layout.Children.Add(dealer);
 
                 // player hand
                 StackPanel payer = BuildPlayerArea();
-                Grid.SetRow((FrameworkElement)payer, 3);
+                Grid.SetRow(payer, 3);
                 layout.Children.Add(payer);
             }
 
@@ -153,11 +153,18 @@ namespace UWPBlackjack
             Grid bottomRow = new() { Margin = new Thickness(12, 6, 12, 12) };
             bottomRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             bottomRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            bottomRow.Children.Add(BuildActionBar());
 
             // bet panel
-            StackPanel betPanel = BuildBetPanel();
+            // Build action bar and center it across BOTH columns
+            var actions = BuildActionBar();
+            actions.HorizontalAlignment = HorizontalAlignment.Center;
+            Grid.SetColumn(actions, 0);
+            Grid.SetColumnSpan(actions, 2);                   
+            bottomRow.Children.Add(actions);
+
+            var betPanel = BuildBetPanel();
             Grid.SetColumn(betPanel, 1);
+            betPanel.HorizontalAlignment = HorizontalAlignment.Right;
             bottomRow.Children.Add(betPanel);
 
             Grid.SetRow(bottomRow, 4);
@@ -337,9 +344,9 @@ namespace UWPBlackjack
             panel.Children.Add(MakeText($"Blackjack", 24, Colors.White, bold: true));
             panel.Children.Add(MakeRow("Bankroll", $"${_game.Bankroll:N0}"));
             panel.Children.Add(MakeRow("Bet", $"${_game.Bet:N0}"));
-            panel.Children.Add(MakeRow("Phase", $"{_game.Phase}"));
+            //panel.Children.Add(MakeRow("Phase", $"{_game.Phase}"));
 
-            var hint = MakeText("Keys: N=new • H=hit • S=stand • +/- bet", 12, Colors.LightGray);
+            var hint = MakeText("Keys: N=new • H=hit • S=stand • ↑/↓ bet", 12, Colors.LightGray);
             hint.Margin = new Thickness(0, 6, 0, 0);
             panel.Children.Add(hint);
 
