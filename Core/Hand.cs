@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Linq;
 
 namespace UWPBlackjack.Core
 {
@@ -29,7 +28,7 @@ namespace UWPBlackjack.Core
                     else total += c.FaceValue; // 2..10 are as is, while J/Q/K are value 10
                 }
 
-                // demote Aces from 11 to 1 until we’re not busting
+                // demote aces from 11 to 1 until we’re not busting
                 while (total > 21 && aceCount-- > 0)
                     total -= 10;
 

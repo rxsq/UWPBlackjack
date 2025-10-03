@@ -16,7 +16,12 @@ using Windows.UI.Xaml.Media.Imaging;
 
 //Project: Lab 1A - UWP Game
 //Student Name: Andrew Dionne
-//Date: 2025/09/27
+//Date: 2025/10/03
+
+/*
+Note: My collectibles of choice are owned backs and owned felts which you can unlock for $ in the shop
+*/
+
 namespace UWPBlackjack
 {
     public sealed partial class GamePage : Page
@@ -57,6 +62,7 @@ namespace UWPBlackjack
             Loaded += GamePage_Loaded;
             Unloaded += GamePage_Unloaded;
         }
+
         #region Events 
         private void GamePage_Loaded(object sender, RoutedEventArgs e)
         {
@@ -203,7 +209,7 @@ namespace UWPBlackjack
 
             Root.Children.Add(layout);
 
-            // if flag _isPaused is true then build overlay (doesn't currently affect actual game state, it is purely visual)
+            // if flag _isPaused is true then build pause overlay 
             if (_isPaused)
             {
                 var pauseOverlay = BuildPauseOverlay();
@@ -228,7 +234,7 @@ namespace UWPBlackjack
                 Root.Children.Add(tip);
             }
 
-            // if game is over ask user to replay (resets bankroll to 1000)
+            // if game is over show game over overlay
             if (_game.Phase == Phase.RoundOver && _game.Bankroll <= 0)
             {
                 Grid gameOverOverlay = BuildGameOverOverlay();
@@ -247,7 +253,7 @@ namespace UWPBlackjack
 
             _isDealingAnimationInProgress = true;
 
-            // draws 2 cards for player and 2 cards for dealer with slight delay between each draw for visual sake
+            // draws 2 cards for player and 2 cards for dealer with 500ms delay between each draw for visual sake
             // refreshing the ui between each draw of card before Task.Delay so we can see cards as they are drawn
             for (int i = 0; i < 2; i++)
             {
@@ -310,7 +316,7 @@ namespace UWPBlackjack
             // while the dealers value is less than 17
             while (_game.DealerShouldHit)
             {
-                // hit one -> play sound effect > refresh the ui > wait 500ms repeat 
+                // hit one > play sound effect > refresh the ui > wait 500ms > repeat 
                 _game.DealerHitOne();
                 PlaySoundEffect(_flip2Src);
 
@@ -471,7 +477,7 @@ namespace UWPBlackjack
                 Margin = new Thickness(8, 0, 0, 0)
             };
 
-            // Click event, to pause and play music
+            // click event, to pause and play music
             btn.Click += (s, e) =>
             {
                 _backgroundMusicPlaying = !_backgroundMusicPlaying; // flip tracking variable
@@ -483,7 +489,7 @@ namespace UWPBlackjack
                 {
                     _bgmPlayer?.Pause();
                 }
-                RefreshUI(); // After clicked, refresh ui
+                RefreshUI(); // after clicked, refresh ui
             };
 
             return btn;
@@ -574,7 +580,7 @@ namespace UWPBlackjack
                 Spacing = 8
             };
 
-            // Changes button from deal, to next depending on game state
+            // changes button from deal, to next depending on game state
             if (_game.Phase == Phase.Betting)
                 wrap.Children.Add(MakeAction("Deal", () => _game.NewRound(), enabled: true));
             else if (_game.Phase == Phase.RoundOver)
@@ -582,7 +588,7 @@ namespace UWPBlackjack
             else
                 wrap.Children.Add(MakeAction("Deal", () => { }, enabled: false));
 
-            // Hit and stand actions, only active if it is player's turn
+            // hit and stand actions, only active if it is player's turn
             bool canAct = _game.Phase == Phase.PlayerTurn;
             wrap.Children.Add(MakeAction("Hit", () => { if (canAct) { _game.Hit(); PlaySoundEffect(_flip1Src); } }, enabled: canAct));
             wrap.Children.Add(MakeAction("Stand", () => { if (canAct) { _game.Stand(); PlaySoundEffect(_flip2Src); } }, enabled: canAct));
@@ -626,6 +632,10 @@ namespace UWPBlackjack
 
             return panel;
         }
+        /// <summary>
+        /// Builds the pause overlay
+        /// </summary>
+        /// <returns>Stackpanel of pause overlay</returns>
         private Grid BuildPauseOverlay()
         {
             var overlay = new Grid
