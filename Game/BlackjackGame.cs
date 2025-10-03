@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Threading;
 using UWPBlackjack.Core;
 
 namespace UWPBlackjack.Game
@@ -22,6 +21,9 @@ namespace UWPBlackjack.Game
         public readonly Deck Deck = new();
         public bool DealerShouldHit => Dealer.Value < 17;
 
+        /// <summary>
+        /// Start session sets initial values
+        /// </summary>
         public void StartSession()
         {
             Bankroll = 500;
@@ -31,13 +33,22 @@ namespace UWPBlackjack.Game
             LastPayout = 0;
         }
 
+        /// <summary>
+        /// Allows for bet to be adjusted to specified amount
+        /// </summary>
+        /// <param name="amount"></param>
         public void AdjustBet(int amount)
         {
+            // cannot adjust bet if not in betting
             if (Phase != Phase.Betting) return;
-            Bet = Math.Max(10, Math.Min(1000, Bet + amount));
+
+            Bet = Math.Max(10, Math.Min(1000, Bet + amount)); // minimum bet is 10 and maximum bet is 1000
             Bet = Math.Min(Bet, Math.Max(10, Bankroll)); // can't bet more than bankroll
         }
 
+        /// <summary>
+        /// New round logic, checks for empty bankroll, clears P and D hands, and shuffles deck
+        /// </summary>
         public void NewRound()
         {
             if (Phase != Phase.Betting) return;
@@ -62,6 +73,9 @@ namespace UWPBlackjack.Game
             Phase = Phase.Dealing;
         }
 
+        /// <summary>
+        /// Draws a card for the player, and check if they bust
+        /// </summary>
         public void Hit()
         {
             if (Phase != Phase.PlayerTurn) return;
@@ -75,29 +89,52 @@ namespace UWPBlackjack.Game
             }
         }
 
+        /// <summary>
+        /// Draws a card for the dealer, and check if they bust
+        /// </summary>
         public void DealerHitOne()
         {
+            if (Phase != Phase.DealerTurn) return;
+
             Dealer.Add(Deck.Draw());
+
+            if (Dealer.IsBust)
+            {
+                Phase = Phase.RoundOver;
+                Settle();
+            }
         }
 
+        /// <summary>
+        /// After dealer's value >= 17, this is called to settle the game
+        /// </summary>
         public void FinishDealer()
         {
             Phase = Phase.RoundOver;
             Settle();
         }
 
+        /// <summary>
+        /// Stand just changes phase to dealer's turn, ui handles drawing cards, etc
+        /// </summary>
         public void Stand()
         {
             if (Phase != Phase.PlayerTurn) return;
             Phase = Phase.DealerTurn;
         }
 
+        /// <summary>
+        /// Next hand changes state back to betting
+        /// </summary>
         public void NextHand()
         {
             if (Phase == Phase.RoundOver)
                 Phase = Phase.Betting;
         }
 
+        /// <summary>
+        /// Game settling, check player value and dealer value and handle it respectively
+        /// </summary>
         private void Settle()
         {
             int pv = Player.Value;

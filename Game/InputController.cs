@@ -7,6 +7,11 @@ namespace UWPBlackjack.Game
     {
         private readonly BlackjackGame _game;
         public InputController(BlackjackGame game) => _game = game;
+        /// <summary>
+        /// Interacts with game based on key presses 
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="args"></param>
         public void OnKeyDown(CoreWindow sender, KeyEventArgs args)
         {
             switch (args.VirtualKey)

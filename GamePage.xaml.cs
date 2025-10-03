@@ -1,24 +1,22 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Threading.Tasks;
 using UWPBlackjack.Core;
 using UWPBlackjack.Game;
+using UWPBlackjack.UI;
+using Windows.Media.Core;
+using Windows.Media.Playback;
 using Windows.UI;
 using Windows.UI.Core;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Media.Imaging;
-using Windows.Media.Playback;
-using Windows.Media.Core;
-using System.Diagnostics;
-using System.ComponentModel.DataAnnotations;
 
 //Project: Lab 1A - UWP Game
 //Student Name: Andrew Dionne
 //Date: 2025/09/27
-
-
 namespace UWPBlackjack
 {
     public sealed partial class GamePage : Page
@@ -33,16 +31,25 @@ namespace UWPBlackjack
         private bool _isDealingAnimationInProgress = false;
         private bool _isDealerAnimationInProgress = false;
 
-        public List<BackOption> _backOptions = [];
+        private List<BackOption> _backOptions = new List<BackOption>();
+        private List<FeltOption> _feltOptions = new List<FeltOption>();
 
         private bool _shopOpen = false;
         private List<string> _ownedBacks = new List<string> { "default" };
         private string currentBack = "default";
 
+        private List<string> _ownedFeltColors = new List<string> { "default" };
+        private Color currentColor = Color.FromArgb(255, 12, 90, 40);
+
         private MediaPlayer _bgmPlayer;
         private static readonly Random _rng = new Random();
 
-        bool _backgroundMusicPlaying = true;
+        bool _backgroundMusicPlaying = false;
+        private MediaPlayer _sfxPlayer;
+        private MediaSource _flip1Src;
+        private MediaSource _flip2Src;
+
+        private ShopTab _shopTab = ShopTab.Backs;
 
         public GamePage()
         {
@@ -56,8 +63,21 @@ namespace UWPBlackjack
             _game = new BlackjackGame();
             _input = new InputController(_game);
 
+            // initialize sfx player and store media source to commonly used sounds
+            _sfxPlayer = new MediaPlayer
+            {
+                AutoPlay = false,
+                Volume = 0.6,
+                AudioCategory = MediaPlayerAudioCategory.SoundEffects
+            };
+            _sfxPlayer.CommandManager.IsEnabled = false; 
+            _flip1Src = MediaSource.CreateFromUri(new Uri("ms-appx:///Assets/Sfx/card_flip_1.mp3"));
+            _flip2Src = MediaSource.CreateFromUri(new Uri("ms-appx:///Assets/Sfx/card_flip_2.mp3"));
+
+
             InitializeCardBacks();
-            PlayBackgroundMusic();
+            InitializeFeltColors();
+            PlayBackgroundMusic(_backgroundMusicPlaying);
 
             var cw = Window.Current.CoreWindow;
             cw.KeyDown += OnCoreKeyDown;
@@ -70,6 +90,9 @@ namespace UWPBlackjack
         {
             var cw = Window.Current.CoreWindow;
             cw.KeyDown -= OnCoreKeyDown;
+            _sfxPlayer?.Dispose();
+            _flip1Src?.Dispose();
+            _flip2Src?.Dispose();
             _bgmPlayer?.Dispose();
             _bgmPlayer = null;
         }
@@ -101,7 +124,7 @@ namespace UWPBlackjack
         {
             Root.Children.Clear();
 
-            Root.Background = new SolidColorBrush(Color.FromArgb(255, 12, 90, 40)); // dark green background (felt)
+            Root.Background = new SolidColorBrush(currentColor);
 
             Grid layout = new();
             layout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // hud
@@ -190,7 +213,7 @@ namespace UWPBlackjack
 
             if (_shopOpen)
             {
-                Grid shopOverlay = BuildBackShopOverlay();
+                Grid shopOverlay = BuildShopOverlay();
                 Canvas.SetZIndex(shopOverlay, 1001);
                 Root.Children.Add(shopOverlay);
             }
@@ -230,11 +253,11 @@ namespace UWPBlackjack
             {
                 _game.Player.Add(_game.Deck.Draw());
                 RefreshUI();
-                PlaySoundEffect("Assets/Sfx/card_flip_1.mp3");
+                PlaySoundEffect(_flip1Src);
                 await Task.Delay(500);
 
                 _game.Dealer.Add(_game.Deck.Draw());
-                PlaySoundEffect("Assets/Sfx/card_flip_2.mp3");
+                PlaySoundEffect(_flip2Src);
                 RefreshUI();
 
                 await Task.Delay(500);
@@ -271,6 +294,11 @@ namespace UWPBlackjack
             _isDealingAnimationInProgress = false;
             RefreshUI();
         }
+        /// <summary>
+        /// This method is used after player stands
+        /// Animates the dealers drawing of their cards with a slight delay and sound effect
+        /// </summary>
+        /// <returns></returns>
         private async Task AnimateDealerTurnAsync()
         {
             if (_isDealerAnimationInProgress) return;
@@ -279,30 +307,37 @@ namespace UWPBlackjack
             RefreshUI();
             await Task.Delay(600);
 
+            // while the dealers value is less than 17
             while (_game.DealerShouldHit)
             {
+                // hit one -> play sound effect > refresh the ui > wait 500ms repeat 
                 _game.DealerHitOne();
-                PlaySoundEffect("Assets/Sfx/card_flip_2.mp3");
+                PlaySoundEffect(_flip2Src);
 
                 RefreshUI();
                 await Task.Delay(500);
 
+                // wait until game is not paused
                 while (_isPaused)
                     await Task.Delay(100);
             }
 
             await Task.Delay(400);
-            _game.FinishDealer();
+            _game.FinishDealer(); // settles game, checks values, and changes game phase
 
             _isDealerAnimationInProgress = false;
             RefreshUI();
         }
-        private async void ShowUnlockDialog(BackOption opt)
+        /// <summary>
+        /// Small content dialog displaying what the user unlocked
+        /// </summary>
+        /// <param name="opt"></param>
+        private async void ShowUnlockDialog(string opt)
         {
             var dialog = new ContentDialog
             {
                 Title = "Unlocked!",
-                Content = $"You unlocked: {opt.DisplayName}",
+                Content = $"You unlocked: {opt}",
                 CloseButtonText = "OK"
             };
 
@@ -311,23 +346,30 @@ namespace UWPBlackjack
         #endregion
 
         #region Card Asset Helpers
-        private static string FaceCode(Card c) => RankCode(c.Rank) + SuitCode(c.Suit);
-        private static string RankCode(int r) => r switch
+        private static string FaceCode(Card c) => RankCode(c.Rank) + SuitCode(c.Suit); /// Face code is rank, then suit, for example 2S, 2C, 6D, ... to help grabbing assets
+        private static string RankCode(int r)
         {
-            1 => "A",
-            10 => "T",
-            11 => "J",
-            12 => "Q",
-            13 => "K",
-            _ => r.ToString()
-        };
-        private static string SuitCode(Suit s) => s switch
+            switch (r)
+            {
+                case 1: return "A";
+                case 10: return "T";
+                case 11: return "J";
+                case 12: return "Q";
+                case 13: return "K";
+                default: return r.ToString();
+            }
+        }
+
+        private static string SuitCode(Suit s)
         {
-            Suit.Clubs => "C",
-            Suit.Diamonds => "D",
-            Suit.Hearts => "H",
-            _ => "S"
-        };
+            switch (s)
+            {
+                case Suit.Clubs: return "C";
+                case Suit.Diamonds: return "D";
+                case Suit.Hearts: return "H";
+                default: return "S";
+            }
+        }
         private void InitializeCardBacks()
         {
             _backOptions.Add(new BackOption { Key = "default", DisplayName = "Classic", AssetFile = "backs/back_default.png", Cost = 0 });
@@ -335,9 +377,20 @@ namespace UWPBlackjack
             _backOptions.Add(new BackOption { Key = "orange", DisplayName = "Sunset Orange", AssetFile = "backs/back_orange.png", Cost = 1_000 });
             _backOptions.Add(new BackOption { Key = "purple", DisplayName = "Royal Purple", AssetFile = "backs/back_purple.png", Cost = 1_500 });
         }
+        private void InitializeFeltColors()
+        {
+            _feltOptions.Add(new FeltOption { Key = "default", DisplayName = "Classic Green", Color = Color.FromArgb(255, 12, 90, 40), Cost = 0} );
+            _feltOptions.Add(new FeltOption { Key = "blue", DisplayName = "Deep Blue", Color = Color.FromArgb(255, 18, 40, 110), Cost = 250} );
+            _feltOptions.Add(new FeltOption { Key = "burgundy", DisplayName = "Burgundy", Color = Color.FromArgb(255, 100, 20, 30), Cost = 250 });
+            _feltOptions.Add(new FeltOption { Key = "charcoal", DisplayName = "Charcoal", Color = Color.FromArgb(255, 30, 30, 30), Cost = 250 });
+        }
         #endregion
 
         #region UI Factories
+        /// <summary>
+        /// Builds out HUD panel (which is used at top of screen, showing title, bankroll, and bet value + tips for keys to press
+        /// </summary>
+        /// <returns></returns>
         private StackPanel BuildHudPanel()
         {
             var panel = new StackPanel
@@ -360,6 +413,10 @@ namespace UWPBlackjack
 
             return panel;
         }
+        /// <summary>
+        /// Builds out simple pause button, subscribes click event to method PauseButton_Click
+        /// </summary>
+        /// <returns></returns>
         private Button BuildPauseButton()
         {
             var btn = new Button
@@ -376,6 +433,10 @@ namespace UWPBlackjack
             btn.Click += PauseButton_Click;
             return btn;
         }
+        /// <summary>
+        /// Builds out simple shop button, subscribes click event to method ShopButton_Click
+        /// </summary>
+        /// <returns></returns>
         private Button BuildShopButton()
         {
             var shopBtn = new Button
@@ -389,9 +450,13 @@ namespace UWPBlackjack
                 CornerRadius = new CornerRadius(6),
                 Margin = new Thickness(8, 0, 8, 0)
             };
-            shopBtn.Click += ShopButton_Click;
+            shopBtn.Click += ShopButton_Click; 
             return shopBtn;
         }
+        /// <summary>
+        /// Builds out a simple music button with action to pause and play background music
+        /// </summary>
+        /// <returns>Button object</returns>
         private Button BuildMusicButton()
         {
             var btn = new Button
@@ -406,9 +471,10 @@ namespace UWPBlackjack
                 Margin = new Thickness(8, 0, 0, 0)
             };
 
+            // Click event, to pause and play music
             btn.Click += (s, e) =>
             {
-                _backgroundMusicPlaying = !_backgroundMusicPlaying;
+                _backgroundMusicPlaying = !_backgroundMusicPlaying; // flip tracking variable
                 if (_backgroundMusicPlaying)
                 {
                     _bgmPlayer?.Play();
@@ -417,12 +483,16 @@ namespace UWPBlackjack
                 {
                     _bgmPlayer?.Pause();
                 }
-                RefreshUI();
+                RefreshUI(); // After clicked, refresh ui
             };
 
             return btn;
         }
 
+        /// <summary>
+        /// Method which builds out dealer's area with dealer's value, and cards
+        /// </summary>
+        /// <returns></returns>
         private StackPanel BuildDealerArea()
         {
             var stack = new StackPanel
@@ -431,9 +501,12 @@ namespace UWPBlackjack
                 HorizontalAlignment = HorizontalAlignment.Center
             };
 
+            // when player's turn or phase is dealing, hide hole is true
             bool hideHole = _game.Phase == Phase.PlayerTurn || _game.Phase == Phase.Dealing;
 
             TextBlock lbl;
+
+            // if hidehole is true, then only show value of dealer's first card
             if (hideHole)
             {
                 if (_game.Dealer.Cards.Count > 0)
@@ -446,6 +519,7 @@ namespace UWPBlackjack
                     lbl = MakeText($"Dealer", 18, Colors.White, bold: true);
                 }
             }
+            // otherwise show full value
             else
             {
                 var val = _game.Dealer?.Value ?? 0;
@@ -454,9 +528,14 @@ namespace UWPBlackjack
             lbl.Margin = new Thickness(0, 6, 0, 6);
             stack.Children.Add(lbl);
 
-            stack.Children.Add(BuildHandFromGame(_game.Dealer, hideHole));
+            // add dealer's cards to the stack under values
+            if (_game.Dealer != null) stack.Children.Add(BuildHandFromGame(_game.Dealer, hideHole));
             return stack;
         }
+        /// <summary>
+        /// Builds players area with all players card images
+        /// </summary>
+        /// <returns>Vertical stackpanel showing player's are (value, card images, and small text showing outcome if round is over)</returns>
         private StackPanel BuildPlayerArea()
         {
             var stack = new StackPanel
@@ -470,17 +549,22 @@ namespace UWPBlackjack
             lbl.Margin = new Thickness(0, 6, 0, 6);
             stack.Children.Add(lbl);
 
-            stack.Children.Add(BuildHandFromGame(_game.Player, hideHole: false));
+            if (_game.Player != null) 
+                stack.Children.Add(BuildHandFromGame(_game.Player, hideHole: false));
 
             if (_game.Phase == Phase.RoundOver && !string.IsNullOrEmpty(_game.LastOutcome))
             {
-                var outcome = MakeText(_game.LastOutcome, 24, Colors.Gold, bold: true);
+                var outcome = MakeText(_game.LastOutcome, 24, Colors.Gold, bold: true, centered: true);
                 outcome.Margin = new Thickness(0, 8, 0, 0);
                 stack.Children.Add(outcome);
             }
 
             return stack;
         }
+        /// <summary>
+        /// Builds action bar which is used on bottom row of screen
+        /// </summary>
+        /// <returns>Horizontal stackpanel of bet panel</returns>
         private StackPanel BuildActionBar()
         {
             var wrap = new StackPanel
@@ -490,6 +574,7 @@ namespace UWPBlackjack
                 Spacing = 8
             };
 
+            // Changes button from deal, to next depending on game state
             if (_game.Phase == Phase.Betting)
                 wrap.Children.Add(MakeAction("Deal", () => _game.NewRound(), enabled: true));
             else if (_game.Phase == Phase.RoundOver)
@@ -497,12 +582,17 @@ namespace UWPBlackjack
             else
                 wrap.Children.Add(MakeAction("Deal", () => { }, enabled: false));
 
+            // Hit and stand actions, only active if it is player's turn
             bool canAct = _game.Phase == Phase.PlayerTurn;
-            wrap.Children.Add(MakeAction("Hit", () => { if (canAct) { _game.Hit(); PlaySoundEffect("Assets/Sfx/card_flip_1.mp3"); } }, enabled: canAct));
-            wrap.Children.Add(MakeAction("Stand", () => { if (canAct) _game.Stand(); PlaySoundEffect("Assets/Sfx/card_flip_2.mp3"); }, enabled: canAct));
+            wrap.Children.Add(MakeAction("Hit", () => { if (canAct) { _game.Hit(); PlaySoundEffect(_flip1Src); } }, enabled: canAct));
+            wrap.Children.Add(MakeAction("Stand", () => { if (canAct) { _game.Stand(); PlaySoundEffect(_flip2Src); } }, enabled: canAct));
 
             return wrap;
         }
+        /// <summary>
+        /// Builds small bet panel
+        /// </summary>
+        /// <returns>Vertical stackpanel of bet panel</returns>
         private StackPanel BuildBetPanel()
         {
             var panel = new StackPanel
@@ -518,6 +608,7 @@ namespace UWPBlackjack
             panel.Children.Add(MakeText($"${_game.Bet:N0}", 20, Colors.White));
 
             var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Margin = new Thickness(0, 8, 0, 0) };
+            // Adjust bet 
             row.Children.Add(MakeAction("−", () =>
             {
                 _game.AdjustBet(-5);
@@ -564,7 +655,11 @@ namespace UWPBlackjack
             overlay.Children.Add(panel);
             return overlay;
         }
-        private Grid BuildBackShopOverlay()
+        /// <summary>
+        /// Overlay for shop, uses tab button, backs grid content, and color grid content
+        /// </summary>
+        /// <returns></returns>
+        private Grid BuildShopOverlay()
         {
             var overlay = new Grid
             {
@@ -581,57 +676,183 @@ namespace UWPBlackjack
                 Width = 520
             };
 
-            panel.Children.Add(MakeText("Card Backs", 32, Colors.White, bold: true, centered: true));
-            panel.Children.Add(MakeText($"Bankroll: ${_game.Bankroll:N0}", 18, Colors.Gold, bold: true, centered: true));
-
-            // simple grid of options
-            var itemsWrap = new WrapGrid
+            // tabs
+            var tabsRow = new StackPanel
             {
                 Orientation = Orientation.Horizontal,
-                MaximumRowsOrColumns = 2
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Spacing = 6
             };
+            tabsRow.Children.Add(MakeTabButton("Card Backs", ShopTab.Backs, _shopTab == ShopTab.Backs));
+            tabsRow.Children.Add(MakeTabButton("Table Color", ShopTab.TableColor, _shopTab == ShopTab.TableColor));
+            panel.Children.Add(tabsRow);
 
-            foreach (var opt in _backOptions)
-                itemsWrap.Children.Add(MakeBackTile(opt));
+            // title + bankroll
+            var title = _shopTab == ShopTab.Backs ? "Card Backs" : "Table Color";
+            panel.Children.Add(MakeText(title, 32, Colors.White, bold: true, centered: true));
+            panel.Children.Add(MakeText($"Bankroll: ${_game.Bankroll:N0}", 18, Colors.Gold, bold: true, centered: true));
 
+            // tab content
+            UIElement content = _shopTab == ShopTab.Backs
+                ? BuildBacksGridContent()
+                : BuildColorGridContent();
+            panel.Children.Add(content);
 
+            // close
+            panel.Children.Add(MakeAction("Close", () => { _shopOpen = false; }, enabled: true, stretchWidth: true));
+
+            overlay.Children.Add(panel);
+            return overlay;
+        }
+        /// <summary>
+        /// Makes the tab button for the item shop 
+        /// </summary>
+        /// <param name="caption"></param>
+        /// <param name="tab"></param>
+        /// <param name="isActive"></param>
+        /// <returns></returns>
+        private Button MakeTabButton(string caption, ShopTab tab, bool isActive)
+        {
+            var b = new Button
+            {
+                Content = caption,
+                Padding = new Thickness(12, 6, 12, 6),
+                Margin = new Thickness(2),
+                CornerRadius = new CornerRadius(6),
+                Background = new SolidColorBrush(isActive ? Color.FromArgb(220, 70, 70, 70) : Color.FromArgb(140, 40, 40, 40)),
+                Foreground = new SolidColorBrush(Colors.White),
+                BorderBrush = new SolidColorBrush(isActive ? Colors.Gold : Color.FromArgb(200, 255, 255, 255)),
+                BorderThickness = new Thickness(1)
+            };
+            b.Click += (_, __) => { _shopTab = tab; RefreshUI(); };
+            return b;
+        }
+        /// <summary>
+        /// This method builds out all the options for the back options in the shop
+        /// </summary>
+        /// <returns></returns>
+        private Grid BuildBacksGridContent()
+        {
             var itemsHost = new Grid { Margin = new Thickness(0, 8, 0, 8) };
 
-            // 2 columns
             itemsHost.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             itemsHost.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
-            // how many rows we need for 2 columns
             int cols = 2;
             int rows = (_backOptions.Count + cols - 1) / cols;
             for (int r = 0; r < rows; r++)
-            {
                 itemsHost.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            }
 
-            // add tiles
             for (int i = 0; i < _backOptions.Count; i++)
             {
                 int r = i / cols;
                 int c = i % cols;
-
                 var tile = MakeBackTile(_backOptions[i]);
                 Grid.SetRow(tile, r);
                 Grid.SetColumn(tile, c);
                 itemsHost.Children.Add(tile);
             }
 
-            panel.Children.Add(itemsHost);
-
-            // Close button
-            panel.Children.Add(MakeAction("Close", () =>
-            {
-                _shopOpen = false;
-            }, enabled: true, stretchWidth: true));
-
-            overlay.Children.Add(panel);
-            return overlay;
+            return itemsHost;
         }
+        /// <summary>
+        /// Builds out the entire grid for the color felt options
+        /// </summary>
+        /// <returns></returns>
+        private Grid BuildColorGridContent()
+        {
+            var itemsHost = new Grid { Margin = new Thickness(0, 8, 0, 8) };
+
+            itemsHost.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            itemsHost.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+            int cols = 2;
+            int rows = (_feltOptions.Count + cols - 1) / cols;
+            for (int r = 0; r < rows; r++)
+                itemsHost.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+            for (int i = 0; i < _feltOptions.Count; i++)
+            {
+                int r = i / cols;
+                int c = i % cols;
+                var tile = MakeFeltColorTile(_feltOptions[i]);
+                Grid.SetRow(tile, r);
+                Grid.SetColumn(tile, c);
+                itemsHost.Children.Add(tile);
+            }
+
+            return itemsHost;
+        }
+        /// <summary>
+        /// This method builds out a single color felt option 
+        /// </summary>
+        /// <param name="opt">Takes in a paramter opt which is a FeltOption object</param>
+        /// <returns>Returns a small grid containing the color option</returns>
+        private Grid MakeFeltColorTile(FeltOption opt)
+        {
+            var g = new Grid
+            {
+                Width = 240,
+                Height = 280,
+                Margin = new Thickness(8),
+                Background = new SolidColorBrush(Color.FromArgb(140, 20, 20, 20))
+            };
+
+            var tile = new StackPanel
+            {
+                Spacing = 6,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+
+            var colorSample = new Grid
+            {
+                Width = 180,
+                Height = 130,
+                Background = new SolidColorBrush(opt.Color),
+                CornerRadius = new CornerRadius(8)
+            };
+            tile.Children.Add(colorSample);
+
+            tile.Children.Add(MakeText(opt.DisplayName, 16, Colors.White, bold: true, centered: true));
+
+            bool owned = _ownedFeltColors.Contains(opt.Key);
+            bool equipped = currentColor.Equals(opt.Color);
+
+            string status = owned ? (equipped ? "Equipped" : "Owned") : $"Price: ${opt.Cost:N0}";
+            tile.Children.Add(MakeText(status, 14, owned ? Colors.LightGreen : Colors.LightGray, centered: true));
+
+            Button btn;
+            if (!owned)
+            {
+                bool canBuy = _game.Bankroll >= opt.Cost;
+                btn = MakeAction("Buy", () =>
+                {
+                    _game.Bankroll -= opt.Cost;
+                    _ownedFeltColors.Add(opt.Key);
+                    currentColor = opt.Color;
+                    ShowUnlockDialog(opt.DisplayName);
+                }, enabled: canBuy, width: 120);
+            }
+            else
+            {
+                btn = MakeAction(equipped ? "Selected" : "Apply", () =>
+                {
+                    currentColor = opt.Color;
+                }, enabled: !equipped, width: 120);
+            }
+
+            btn.HorizontalAlignment = HorizontalAlignment.Center;
+            tile.Children.Add(btn);
+
+            g.Children.Add(tile);
+            return g;
+        }
+        /// <summary>
+        /// This method builds out a single back option 
+        /// </summary>
+        /// <param name="opt">Takes in a parameter opt which is a BackOption object</param>
+        /// <returns>Returns an individual grid with a single back option</returns>
         private Grid MakeBackTile(BackOption opt)
         {
             var g = new Grid
@@ -644,11 +865,9 @@ namespace UWPBlackjack
 
             var tile = new StackPanel { Spacing = 6, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
 
-            // Preview image
             var img = MakeCardImage(opt.AssetFile, 100, 160);
             tile.Children.Add(img);
 
-            // Name + price/status
             var name = MakeText(opt.DisplayName, 16, Colors.White, bold: true, centered: true);
             tile.Children.Add(name);
 
@@ -656,12 +875,9 @@ namespace UWPBlackjack
             bool equipped = currentBack == opt.Key;
 
             string status = owned ? (equipped ? "Equipped" : "Owned") : $"Price: ${opt.Cost:N0}";
-            var statusText = MakeText(status, 14, owned ? Colors.LightGreen : Colors.LightGray, centered: true);
-            tile.Children.Add(statusText);
+            tile.Children.Add(MakeText(status, 14, owned ? Colors.LightGreen : Colors.LightGray, centered: true));
 
-            // Action button
             Button actionBtn;
-
             if (!owned)
             {
                 bool canBuy = _game.Bankroll >= opt.Cost;
@@ -670,7 +886,7 @@ namespace UWPBlackjack
                     _game.Bankroll -= opt.Cost;
                     _ownedBacks.Add(opt.Key);
                     currentBack = opt.Key;
-                    ShowUnlockDialog(opt);
+                    ShowUnlockDialog(opt.DisplayName);
                 }, enabled: canBuy, width: 120);
             }
             else
@@ -687,6 +903,10 @@ namespace UWPBlackjack
             g.Children.Add(tile);
             return g;
         }
+        /// <summary>
+        /// Builds out game over screen 
+        /// </summary>
+        /// <returns>Grid object for overlay</returns>
         private Grid BuildGameOverOverlay()
         {
             var overlay = new Grid
@@ -707,7 +927,12 @@ namespace UWPBlackjack
             {
                 _game.StartSession();
                 _isPaused = false;
+
                 _ownedBacks = new List<string> { "default" };
+                _ownedFeltColors = new List<string> { "default" };
+                var defaultFelt = _feltOptions.Find(f => f.Key == "default");
+                if (defaultFelt != null) currentColor = defaultFelt.Color;
+                currentBack = "default";
             }, enabled: true, stretchWidth: true));
             panel.Children.Add(MakeAction("Quit", () =>
             {
@@ -716,17 +941,32 @@ namespace UWPBlackjack
             overlay.Children.Add(panel);
             return overlay;
         }
-        private TextBlock MakeText(string t, double size, Color color, bool bold = false, bool centered = false)
+        /// <summary>
+        /// Makes a textblock with specified requirements
+        /// </summary>
+        /// <param name="text"></param>
+        /// <param name="size"></param>
+        /// <param name="color"></param>
+        /// <param name="bold">Default to false</param>
+        /// <param name="centered">Default to false</param>
+        /// <returns></returns>
+        private TextBlock MakeText(string text, double size, Color color, bool bold = false, bool centered = false)
         {
             return new TextBlock
             {
-                Text = t,
+                Text = text,
                 Foreground = new SolidColorBrush(color),
                 FontSize = size,
                 FontWeight = bold ? Windows.UI.Text.FontWeights.SemiBold : Windows.UI.Text.FontWeights.Normal,
                 TextAlignment = centered ? TextAlignment.Center : TextAlignment.Left,
             };
         }
+        /// <summary>
+        /// Creates a reusable UI row with a label on the left and a bold value aligned on the right.
+        /// </summary>
+        /// <param name="label"></param>
+        /// <param name="value"></param>
+        /// <returns></returns>
         private Grid MakeRow(string label, string value)
         {
             var g = new Grid();
@@ -743,6 +983,16 @@ namespace UWPBlackjack
 
             return g;
         }
+        /// <summary>
+        /// General method which can be used to make actions
+        /// </summary>
+        /// <param name="caption"></param>
+        /// <param name="onClick"></param>
+        /// <param name="small"></param>
+        /// <param name="enabled"></param>
+        /// <param name="width"></param>
+        /// <param name="stretchWidth"></param>
+        /// <returns>A button with whatever action is specified</returns>
         private Button MakeAction(string caption, Action onClick, bool small = false, bool enabled = true, double? width = null, bool stretchWidth = false)
         {
             var b = new Button
@@ -765,6 +1015,12 @@ namespace UWPBlackjack
             b.Click += (_, __) => { onClick(); RefreshUI(); };
             return b;
         }
+        /// <summary>
+        /// Builds out a hand
+        /// </summary>
+        /// <param name="hand">Takes the hand object</param>
+        /// <param name="hideHole">hideHole is when dealer's second card is face down</param>
+        /// <returns>Stackpanel of card images</returns>
         private StackPanel BuildHandFromGame(Hand hand, bool hideHole)
         {
             string backAsset = _backOptions?.Find(b => b.Key == currentBack)?.AssetFile
@@ -779,7 +1035,7 @@ namespace UWPBlackjack
 
             for (int i = 0; i < hand.Cards.Count; i++)
             {
-                var isHole = hideHole && i == 1;
+                var isHole = hideHole && i == 1; // if hidehole is true and if card is at idx 1 (second card), show back of card, otherwise show card
                 if (isHole)
                 {
                     panel.Children.Add(MakeCardImage(backAsset, CARD_WIDTH, CARD_HEIGHT));
@@ -792,6 +1048,13 @@ namespace UWPBlackjack
             }
             return panel;
         }
+        /// <summary>
+        /// Builds out the image for the card
+        /// </summary>
+        /// <param name="relativePath">Relative path to image</param>
+        /// <param name="w"><Width/param>
+        /// <param name="h">Height</param>
+        /// <returns>Image object of the card</returns>
         private Image MakeCardImage(string relativePath, double w, double h)
         {
             Uri uri = new Uri($"ms-appx:///Assets/Cards/{relativePath}");
@@ -809,7 +1072,11 @@ namespace UWPBlackjack
         #endregion
 
         #region Audio & Audio Helpers
-        private void PlayBackgroundMusic()
+       /// <summary>
+       /// Runs background music in a loop 
+       /// </summary>
+       /// <param name="playing">Takes boolean 'playing' if you don't want to play it initially but is defaulted to true</param>
+        private void PlayBackgroundMusic(bool playing = true)
         {
             try
             {
@@ -818,28 +1085,32 @@ namespace UWPBlackjack
                     _bgmPlayer = new MediaPlayer
                     {
                         IsLoopingEnabled = true,
-                        Volume = 0.05
+                        Volume = 0.3
                     };
                 }
 
                 var uri = new Uri("ms-appx:///Assets/Music/default.mp3");
                 _bgmPlayer.Source = MediaSource.CreateFromUri(uri);
-                _bgmPlayer.Play();
+                if (playing) _bgmPlayer.Play();
             }
             catch (Exception ex)
             {
                 Debug.WriteLine("BGM error: " + ex.Message);
             }
         }
-        private void PlaySoundEffect(string packageRelativePath)
+        /// <summary>
+        /// Void method to play sound effect
+        /// </summary>
+        /// <param name="src">Takes paramater of type MediaSource</param>
+        private void PlaySoundEffect(MediaSource src)
         {
             try
             {
-                var uri = new Uri($"ms-appx:///{packageRelativePath}"); 
-                var player = new MediaPlayer { AutoPlay = true, Volume = 0.1 };
-                player.Source = MediaSource.CreateFromUri(uri);
-                player.MediaEnded += (s, e) => player.Dispose();
-                player.Play();
+                if (_sfxPlayer == null || src == null) return;
+
+                _sfxPlayer.Source = src; 
+                _sfxPlayer.PlaybackSession.Position = TimeSpan.Zero;
+                _sfxPlayer.Play();
             }
             catch (Exception ex)
             {

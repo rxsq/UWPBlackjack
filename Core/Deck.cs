@@ -20,11 +20,6 @@ namespace UWPBlackjack.Core
         }
 
         /// <summary>
-        /// Number of cards remaining in the deck.
-        /// </summary>
-        public int Count => _cards.Length - _top;
-
-        /// <summary>
         /// Draws the top card. If empty, automatically reshuffles a new 52-card deck.
         /// </summary>
         public Card Draw()

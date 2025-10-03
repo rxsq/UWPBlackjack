@@ -1,10 +1,12 @@
-﻿namespace UWPBlackjack.Core
+﻿using Windows.UI;
+
+namespace UWPBlackjack.UI
 {
-    public class BackOption
+    public class FeltOption
     {
         public string Key { get; set; } = "";
         public string DisplayName { get; set; } = "";
-        public string AssetFile { get; set; } = "";
+        public Color Color { get; set; }
         public int Cost { get; set; }
     }
 }
