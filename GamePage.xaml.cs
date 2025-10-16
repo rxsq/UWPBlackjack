@@ -411,6 +411,7 @@ namespace UWPBlackjack
             panel.Children.Add(MakeText($"Blackjack", 24, Colors.White, bold: true));
             panel.Children.Add(MakeRow("Bankroll", $"${_game.Bankroll:N0}"));
             panel.Children.Add(MakeRow("Bet", $"${_game.Bet:N0}"));
+            panel.Children.Add(MakeRow("Highest Bankroll", $"${_game.HighestScore:N0}"));
             //panel.Children.Add(MakeRow("Phase", $"{_game.Phase}"));
 
             var hint = MakeText("Keys: N=new • H=hit • S=stand • ↑/↓ bet", 12, Colors.LightGray);

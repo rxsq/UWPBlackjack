@@ -1,0 +1,32 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ClassDiagram MajorVersion="1" MinorVersion="1">
+  <Class Name="UWPBlackjack.Core.Deck">
+    <Position X="7.5" Y="0.75" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAQACAgAAAAAAAABAAAAAAAAAAAAAAAAAEAA=</HashCode>
+      <FileName>Core\Deck.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="UWPBlackjack.Core.Hand">
+    <Position X="10.25" Y="0.75" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAYAAAAAAAAAAAAAAAAAAABIAAAAAAAAAAAgAABAAAA=</HashCode>
+      <FileName>Core\Hand.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Struct Name="UWPBlackjack.Core.Card">
+    <Position X="3.5" Y="0.75" Width="2.75" />
+    <TypeIdentifier>
+      <HashCode>AAANAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADAA=</HashCode>
+      <FileName>Core\Card.cs</FileName>
+    </TypeIdentifier>
+  </Struct>
+  <Enum Name="UWPBlackjack.Core.Suit">
+    <Position X="1" Y="1" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAQAAAEAAAAAAAAABAAAAAAAAAAAAAAAAAAAACA=</HashCode>
+      <FileName>Core\Suit.cs</FileName>
+    </TypeIdentifier>
+  </Enum>
+  <Font Name="Segoe UI" Size="9" />
+</ClassDiagram>

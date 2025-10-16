@@ -1,0 +1,25 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ClassDiagram MajorVersion="1" MinorVersion="1">
+  <Class Name="UWPBlackjack.Game.BlackjackGame">
+    <Position X="6.25" Y="0.75" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>BAAAAAAAMAAAAAACBAIAIEAggABCAAAAAABAASAABAA=</HashCode>
+      <FileName>Game\BlackjackGame.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="UWPBlackjack.Game.InputController">
+    <Position X="3" Y="1" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAQ=</HashCode>
+      <FileName>Game\InputController.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Enum Name="UWPBlackjack.Game.Phase">
+    <Position X="3" Y="4" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAgAAiAAI=</HashCode>
+      <FileName>Game\Phase.cs</FileName>
+    </TypeIdentifier>
+  </Enum>
+  <Font Name="Segoe UI" Size="9" />
+</ClassDiagram>

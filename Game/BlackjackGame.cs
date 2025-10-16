@@ -21,16 +21,19 @@ namespace UWPBlackjack.Game
         public readonly Deck Deck = new();
         public bool DealerShouldHit => Dealer.Value < 17;
 
+        public int HighestScore => HighScoreManager.GetHighestScore();
+
         /// <summary>
         /// Start session sets initial values
         /// </summary>
-        public void StartSession()
+        public async void StartSession()
         {
             Bankroll = 500;
             Bet = 25;
             Phase = Phase.Betting;
             LastOutcome = "";
             LastPayout = 0;
+            await HighScoreManager.LoadAsync();
         }
 
         /// <summary>
@@ -180,6 +183,8 @@ namespace UWPBlackjack.Game
 
             Bankroll += payout;
             LastPayout = payout;
+
+            _ = HighScoreManager.AddScoreAsync(Bankroll);
         }
 
     }
