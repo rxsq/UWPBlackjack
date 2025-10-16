@@ -132,7 +132,18 @@ namespace UWPBlackjack.Game
         public void NextHand()
         {
             if (Phase == Phase.RoundOver)
-                Phase = Phase.Betting;
+            Phase = Phase.Betting;
+        }
+
+        /// <summary>
+        /// Ui handles drawing of cards, this changes to dealer turn and doubles the bet
+        /// </summary>
+        public void Double()
+        {
+            if (Phase != Phase.PlayerTurn || Player.Cards.Count != 2 || Bankroll < Bet)
+                return;
+            Bet *= 2;
+            Phase = Phase.DealerTurn;
         }
 
         /// <summary>

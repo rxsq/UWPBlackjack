@@ -591,8 +591,12 @@ namespace UWPBlackjack
 
             // hit and stand actions, only active if it is player's turn
             bool canAct = _game.Phase == Phase.PlayerTurn;
+
+            bool canDouble = canAct && _game.Player.Cards.Count == 2 && _game.Bankroll >= _game.Bet;
+
             wrap.Children.Add(MakeAction("Hit", () => { if (canAct) { _game.Hit(); PlaySoundEffect(_flip1Src); } }, enabled: canAct));
             wrap.Children.Add(MakeAction("Stand", () => { if (canAct) { _game.Stand(); PlaySoundEffect(_flip2Src); } }, enabled: canAct));
+            wrap.Children.Add(MakeAction("Double", () => { if (canDouble) { _game.Double(); PlaySoundEffect(_flip1Src); } }, enabled: canDouble));  
 
             return wrap;
         }
