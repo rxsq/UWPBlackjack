@@ -56,6 +56,8 @@ namespace UWPBlackjack
 
         private ShopTab _shopTab = ShopTab.Backs;
 
+        private bool _doubling = false;
+
         public GamePage()
         {
             InitializeComponent();
@@ -167,10 +169,17 @@ namespace UWPBlackjack
                 _ = AnimateInitialDealAsync();
             }
 
+            // if doubling flag is true then animate dealer turn
+            if (_doubling)
+            {
+                _doubling = false;
+                _ = AnimateDealerTurnAsync();
+            }
+
             if (_game.Phase == Phase.DealerTurn && !_isDealerAnimationInProgress)
             {
                 _ = AnimateDealerTurnAsync();
-            }
+            }  
 
             // only show dealer and player hands if not in Betting phase
             if (_game.Phase != Phase.Betting)
@@ -592,11 +601,11 @@ namespace UWPBlackjack
             // hit and stand actions, only active if it is player's turn
             bool canAct = _game.Phase == Phase.PlayerTurn;
 
-            bool canDouble = canAct && _game.Player.Cards.Count == 2 && _game.Bankroll >= _game.Bet;
+            bool canDouble = canAct && _game.Player.Cards.Count == 2 && (_game.Bankroll-_game.Bet) >= _game.Bet;
 
             wrap.Children.Add(MakeAction("Hit", () => { if (canAct) { _game.Hit(); PlaySoundEffect(_flip1Src); } }, enabled: canAct));
             wrap.Children.Add(MakeAction("Stand", () => { if (canAct) { _game.Stand(); PlaySoundEffect(_flip2Src); } }, enabled: canAct));
-            wrap.Children.Add(MakeAction("Double", () => { if (canDouble) { _game.Double(); PlaySoundEffect(_flip1Src); } }, enabled: canDouble));  
+            wrap.Children.Add(MakeAction("Double", () => { if (canDouble) { _game.Double(); PlaySoundEffect(_flip1Src); _doubling = true; } }, enabled: canDouble));  
 
             return wrap;
         }
