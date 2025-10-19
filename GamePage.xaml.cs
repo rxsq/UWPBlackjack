@@ -196,10 +196,12 @@ namespace UWPBlackjack
             var actions = BuildActionBar();
             actions.HorizontalAlignment = HorizontalAlignment.Center;
             Grid.SetColumn(actions, 0);
-            Grid.SetColumnSpan(actions, 2);                   
+            Grid.SetColumnSpan(actions, 2);
             bottomRow.Children.Add(actions);
 
-            var betPanel = BuildBetPanel();
+            var betActionsEnabled = _game.Phase == Phase.Betting;
+
+            var betPanel = BuildBetPanel(enabledActions: betActionsEnabled);
             Grid.SetColumn(betPanel, 1);
             betPanel.HorizontalAlignment = HorizontalAlignment.Right;
             bottomRow.Children.Add(betPanel);
@@ -604,7 +606,7 @@ namespace UWPBlackjack
         /// Builds small bet panel
         /// </summary>
         /// <returns>Vertical stackpanel of bet panel</returns>
-        private StackPanel BuildBetPanel()
+        private StackPanel BuildBetPanel(bool enabledActions = true)
         {
             var panel = new StackPanel
             {
@@ -623,11 +625,11 @@ namespace UWPBlackjack
             row.Children.Add(MakeAction("−", () =>
             {
                 _game.AdjustBet(-5);
-            }, small: true));
+            }, small: true, enabled: enabledActions));
             row.Children.Add(MakeAction("+", () =>
             {
                 _game.AdjustBet(+5);
-            }, small: true));
+            }, small: true, enabled: enabledActions));
 
             panel.Children.Add(row);
 

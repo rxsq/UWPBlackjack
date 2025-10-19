@@ -29,7 +29,7 @@ namespace UWPBlackjack.Game
         public async void StartSession()
         {
             Bankroll = 500;
-            Bet = 25;
+            Bet = 50;
             Phase = Phase.Betting;
             LastOutcome = "";
             LastPayout = 0;
