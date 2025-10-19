@@ -45,7 +45,7 @@ namespace UWPBlackjack.Game
             // cannot adjust bet if not in betting
             if (Phase != Phase.Betting) return;
 
-            Bet = Math.Max(10, Math.Min(1000, Bet + amount)); // minimum bet is 10 and maximum bet is 1000
+            Bet = Math.Max(10, Bet + amount); // minimum bet is 10 and no maximum bet
             Bet = Math.Min(Bet, Math.Max(10, Bankroll)); // can't bet more than bankroll
         }
 
@@ -140,8 +140,15 @@ namespace UWPBlackjack.Game
         /// </summary>
         public void Double()
         {
-            if (Phase != Phase.PlayerTurn || Player.Cards.Count != 2 || Bankroll < Bet)
+            if (Phase != Phase.PlayerTurn || Player.Cards.Count != 2 || (Bankroll-Bet) < Bet)
                 return;
+            Player.Add(Deck.Draw());
+            if (Player.IsBust)
+            {
+                Phase = Phase.RoundOver;
+                Settle();
+                return;
+            }
             Bet *= 2;
             Phase = Phase.DealerTurn;
         }
